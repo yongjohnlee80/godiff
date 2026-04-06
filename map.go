@@ -110,7 +110,7 @@ func Cast[T any](v DataMap) (T, error) {
 }
 
 // MustCast converts a DataMap into a specified type by unmarshalling its JSON
-// representation into the target type.
+// representation into the target type. Panics if conversion fails.
 func MustCast[T any](v DataMap) T {
 	return MustCastBytes[T](v.Bytes())
 }
@@ -125,9 +125,11 @@ func CastBytes[T any](b []byte) (T, error) {
 }
 
 // MustCastBytes decodes a JSON-encoded byte slice into a value of the specified
-// generic type T.
-// Returns zeo value of type T if the decoding fails.
+// generic type T. Panics if decoding fails.
 func MustCastBytes[T any](b []byte) T {
-	t, _ := CastBytes[T](b)
+	t, err := CastBytes[T](b)
+	if err != nil {
+		panic("godiff: MustCastBytes failed: " + err.Error())
+	}
 	return t
 }

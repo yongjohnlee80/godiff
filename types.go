@@ -93,13 +93,13 @@ func retrieveTypesFromStruct(s any, path string) (DataTypes, error) {
 			sub := fieldValue.Interface()
 			subTypes, err := retrieveTypesFromStruct(sub, createPath(path, fieldName))
 			if err == nil {
-				tags := strings.Split(field.Tag.Get(structTag), ",")
+				tags := strings.Split(field.Tag.Get(getStructTag()), ",")
 				t.Add(createPath(path, fieldName), fieldType.String(), tags...)
 				t.Merge(&subTypes)
 				continue
 			}
 		}
-		tags := strings.Split(field.Tag.Get(structTag), ",")
+		tags := strings.Split(field.Tag.Get(getStructTag()), ",")
 		t.Add(createPath(path, fieldName), fieldType.String(), tags...)
 	}
 	return t, nil

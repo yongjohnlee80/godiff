@@ -1,5 +1,7 @@
 package godiff
 
+import "reflect"
+
 // Nullable defines the minimal interface for nullable/optional value types.
 // Any type satisfying this interface will be treated with nullable semantics
 // during comparison: two values where both IsNil() return true are considered
@@ -33,16 +35,31 @@ type NullableWithData[T any] interface {
 
 // isNullable checks if the value implements the Nullable interface.
 func isNullable(v any) (Nullable, bool) {
+	if v == nil {
+		return nil, false
+	}
 	n, ok := v.(Nullable)
 	return n, ok
 }
 
-// nullableData attempts to extract the underlying value from a Nullable.
-// It tries NullableWithData[any] first, then falls back to reflection-free
-// approach. Returns the value and true if extraction succeeded.
+// nullableData attempts to extract the underlying value from a value that has
+// a Data() method returning any type. Because Go generics are invariant,
+// NullableWithData[time.Time] does not satisfy NullableWithData[any], so we
+// use reflection to call the Data method dynamically.
 func nullableData(v any) (any, bool) {
-	if n, ok := v.(NullableWithData[any]); ok {
-		return n.Data(), true
+	if v == nil {
+		return nil, false
 	}
-	return nil, false
+	rv := reflect.ValueOf(v)
+	method := rv.MethodByName("Data")
+	if !method.IsValid() {
+		return nil, false
+	}
+	// Data() must take zero args and return exactly one value
+	mt := method.Type()
+	if mt.NumIn() != 0 || mt.NumOut() != 1 {
+		return nil, false
+	}
+	results := method.Call(nil)
+	return results[0].Interface(), true
 }

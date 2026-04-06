@@ -43,7 +43,7 @@ func StructToMap(s any, parentPaths ...string) (DataMap, DataTypes, error) {
 		fieldType := field.Type
 
 		// handle custom auditTags
-		auditTag := field.Tag.Get(structTag)
+		auditTag := field.Tag.Get(getStructTag())
 		if auditTag == AuditLogIgnore {
 			continue
 		}

@@ -55,11 +55,11 @@ func VettedDataMap(data *DataMap, types *DataTypes) *DataMap {
 	}
 	temp := make(DataMap)
 	for k, v := range *data {
-		if _, ok := data.Get(k); ok && vetted[k] {
-			temp.Set(k, RedactedValue)
-			continue
+		if vetted[k] {
+			temp[k] = RedactedValue
+		} else {
+			temp[k] = v
 		}
-		temp.Set(k, v)
 	}
 	return &temp
 }
