@@ -165,41 +165,72 @@ converted, err := godiff.ConvertArray[PersonV1, PersonV2](people)
 
 ## Nullable Interface
 
-Types implementing the `Nullable` interface get special nil-safe comparison semantics. Two values where both `IsNil()` return true are considered equal, regardless of their underlying zero values.
+The package provides two interfaces for nullable/optional value types:
 
 ```go
-// Nullable is satisfied by any type with these two methods:
+// Nullable — minimal interface for nil-safe comparison.
+// Two values where both IsNil() return true are considered equal.
 type Nullable interface {
     IsNil() bool
-    Data() any
+}
+
+// NullableWithData[T] — extends Nullable with typed data access.
+// Used when the package needs to unwrap the underlying value (e.g. time comparison).
+type NullableWithData[T any] interface {
+    Nullable
+    Data() T
 }
 ```
 
-This is useful for optional/nullable wrapper types (like `nilable.Value[T]`):
+The split design avoids interface conflicts with generic types. A type like `nilable.Value[T]` only needs `IsNil() bool` to satisfy `Nullable`, and can optionally add `Data() T` for `NullableWithData[T]` — no `Data() any` signature clash.
 
 ```go
-type OptionalString struct {
-    value string
+type Value[T any] struct {
+    data  T
     isSet bool
 }
 
-func (o OptionalString) IsNil() bool { return !o.isSet }
-func (o OptionalString) Data() any   { return o.value }
+// Satisfies Nullable — enough for nil-safe comparison
+func (v Value[T]) IsNil() bool { return !v.isSet }
 
-// During comparison, two unset OptionalString values are equal
-// even if their underlying string is different ("" vs "something")
+// Satisfies NullableWithData[T] — enables value unwrapping
+func (v Value[T]) Data() T { return v.data }
+```
+
+During comparison, two unset values are equal regardless of their underlying zero values:
+
+```go
+a := nilable.New[string]()           // IsNil() == true
+b := nilable.New[string]()           // IsNil() == true
+// godiff treats a and b as equal
 ```
 
 The package also retains legacy support for types whose type string starts with `"nilable.Value"` via string-based detection.
 
 ## Configurable Struct Tag
 
-The struct tag key is defined as the `StructTag` constant (default `"audit_log"`). To use a different tag namespace across the package, update this constant:
+The struct tag key defaults to `"audit_log"` and can be changed at runtime:
 
 ```go
-// In godiff/utils.go
-const StructTag = "audit_log"  // change to "diff", "audit", etc.
+// Check the current tag key
+fmt.Println(godiff.GetStructTag()) // "audit_log"
+
+// Change it before any comparison calls (e.g. in init or main)
+godiff.SetStructTag("diff")
+
+// Now the package reads `diff:"ignore"` instead of `audit_log:"ignore"`
+type Document struct {
+    ID       string
+    Internal string `diff:"ignore"`
+    Secret   string `diff:"redact"`
+}
 ```
+
+| Function | Description |
+|----------|-------------|
+| `GetStructTag()` | Returns the currently active tag key |
+| `SetStructTag(tag)` | Overrides the tag key (call once at startup) |
+| `DefaultStructTag` | Constant `"audit_log"` for reference |
 
 ## License
 
